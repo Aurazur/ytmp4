@@ -5,9 +5,18 @@ import os
 app = Flask(__name__)
 DOWNLOAD_FOLDER = "downloads"
 
-# Ensure the downloads folder exists
 if not os.path.exists(DOWNLOAD_FOLDER):
     os.makedirs(DOWNLOAD_FOLDER)
+
+def clear_download_folder():
+    for filename in os.listdir(DOWNLOAD_FOLDER):
+        file_path = os.path.join(DOWNLOAD_FOLDER, filename)
+        try:
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+                print(f"Deleted: {file_path}")
+        except Exception as e:
+            print(f"Error deleting file: {file_path}, {e}")
 
 @app.route('/')
 def home():
@@ -16,24 +25,21 @@ def home():
 @app.route('/download', methods=['POST'])
 def download():
     try:
-        # Get the YouTube URL from the form
         video_url = request.form['url']
 
-        # Set the output path for downloaded videos
+        clear_download_folder()
+
         output_path = os.path.join(DOWNLOAD_FOLDER, '%(title)s.%(ext)s')
 
-        # Set download options for yt-dlp
         ydl_opts = {
-            'outtmpl': output_path,  # Save to the downloads folder
-            'format': 'best',  # Best quality video and audio
+            'outtmpl': output_path,
+            'format': 'best',
         }
 
-        # Download the video using yt-dlp
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info_dict = ydl.extract_info(video_url, download=True)
             file_path = ydl.prepare_filename(info_dict)
 
-        # Schedule the file for deletion after sending it
         @after_this_request
         def remove_file(response):
             try:
@@ -43,7 +49,6 @@ def download():
                 print(f"Error removing file: {e}")
             return response
 
-        # Send the file to the client for download
         return send_file(
             file_path,
             as_attachment=True,
@@ -53,5 +58,5 @@ def download():
     except Exception as e:
         return f"An error occurred: {e}"
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
